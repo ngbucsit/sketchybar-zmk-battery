@@ -88,3 +88,28 @@ import Testing
         }
     }
 }
+
+@Suite struct BarStyleTests {
+    @Test func parsesQueryOutput() throws {
+        let json = #"{"color": "0x40000000", "blur_radius": 30, "corner_radius": 10, "border_width": 0, "border_color": "0xffff0000", "shadow": "off", "height": 40}"#
+        let style = try #require(BarStyle(queryOutput: Data(json.utf8)))
+        #expect(style == BarStyle(color: 0x4000_0000, blurRadius: 30, cornerRadius: 10, borderWidth: 0, borderColor: 0xFFFF_0000))
+        #expect(style.isDark)
+        #expect(!style.shadow)
+        #expect(BarStyle(queryOutput: Data(#"{"color": "0x40000000", "shadow": "on"}"#.utf8))?.shadow == true)
+    }
+
+    @Test func colorComponents() {
+        let c = BarStyle.components(0x40FF_8000)
+        #expect(c.alpha == 64.0 / 255)
+        #expect(c.red == 1 && c.green == 128.0 / 255 && c.blue == 0)
+        #expect(BarStyle.parseColor("0xffffffff") == 0xFFFF_FFFF)
+        #expect(BarStyle.parseColor("nope") == nil)
+        #expect(!BarStyle(color: 0xFFFF_FFFF, blurRadius: 0, cornerRadius: 0, borderWidth: 0, borderColor: 0).isDark)
+    }
+
+    @Test func rejectsMissingColor() {
+        #expect(BarStyle(queryOutput: Data("{}".utf8)) == nil)
+        #expect(BarStyle(queryOutput: Data("not json".utf8)) == nil)
+    }
+}

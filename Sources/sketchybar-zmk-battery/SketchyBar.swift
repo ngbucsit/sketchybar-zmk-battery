@@ -1,21 +1,12 @@
 import Foundation
+import ZMKBatteryCore
 
 struct SketchyBar {
     let executable: URL
 
-    /// Uses `path` if given, otherwise searches PATH plus the usual Homebrew prefixes
-    /// (launchd-started processes often have a minimal PATH).
     init?(path: String?) {
-        let fileManager = FileManager.default
-        if let path {
-            guard fileManager.isExecutableFile(atPath: path) else { return nil }
-            executable = URL(fileURLWithPath: path)
-            return
-        }
-        let searchPath = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map(String.init)
-        let candidates = (searchPath + ["/opt/homebrew/bin", "/usr/local/bin"]).map { "\($0)/sketchybar" }
-        guard let found = candidates.first(where: fileManager.isExecutableFile(atPath:)) else { return nil }
-        executable = URL(fileURLWithPath: found)
+        guard let executable = SketchyBarExecutable.locate(path: path) else { return nil }
+        self.executable = executable
     }
 
     func set(item: String, label: String) {

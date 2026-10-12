@@ -7,6 +7,7 @@ let package = Package(
     platforms: [.macOS(.v13)],
     products: [
         .executable(name: "sketchybar-zmk-battery", targets: ["sketchybar-zmk-battery"]),
+        .executable(name: "sketchybar-zmk-battery-graph", targets: ["sketchybar-zmk-battery-graph"]),
     ],
     targets: [
         // Pure logic (classification, formatting, flags) so it can be unit-tested without Bluetooth.
@@ -25,6 +26,8 @@ let package = Package(
                 ]),
             ]
         ),
+        // Separate from the daemon so the daemon never loads AppKit/SwiftUI.
+        .executableTarget(name: "sketchybar-zmk-battery-graph", dependencies: ["ZMKBatteryCore"]),
         .testTarget(name: "ZMKBatteryCoreTests", dependencies: ["ZMKBatteryCore"]),
     ],
     swiftLanguageModes: [.v6]

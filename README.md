@@ -40,7 +40,7 @@ git clone https://github.com/ngbucsit/sketchybar-zmk-battery.git
 cd sketchybar-zmk-battery
 swift build -c release
 mkdir -p ~/.local/bin
-cp .build/release/sketchybar-zmk-battery ~/.local/bin/
+cp .build/release/sketchybar-zmk-battery .build/release/sketchybar-zmk-battery-graph ~/.local/bin/
 ```
 
 ## 3. Check that your keyboard is detected
@@ -67,7 +67,8 @@ Add this to `~/.config/sketchybar/sketchybarrc`. If you already have a keyboard 
 
 ```sh
 sketchybar --add item kb_batt right \
-           --set kb_batt icon="󰌌" width=100
+           --set kb_batt icon="󰌌" width=100 \
+                 click_script='pkill -x sketchybar-zmk-battery-graph || "$HOME/.local/bin/sketchybar-zmk-battery-graph" &'
 
 # Restart the daemon on every config reload so only one copy runs.
 pkill -x sketchybar-zmk-battery
@@ -83,6 +84,19 @@ sketchybar --reload
 ```
 
 macOS may ask once more for Bluetooth access, this time for SketchyBar, because SketchyBar starts the daemon. Allow it.
+
+## Battery history graph
+
+Click the item to open a graph of recent battery levels: central on top, each peripheral below. The Y axis runs 0–100% in steps of 25. The X axis shows 7 ticks ending at now, spaced 30 minutes apart by default. Press ← / → to switch between 15m, 30m and 2h spacing (1.5, 3 or 12 hours of history). Gaps show when the keyboard was disconnected. Click the item again, click anywhere else, or press Esc to close it. The window copies your bar's `color`, `blur_radius`, `corner_radius`, border and `shadow`, read from `sketchybar --query bar` when it opens.
+
+The `click_script` above opens it. The daemon records each level change to `~/Library/Application Support/sketchybar-zmk-battery/history.jsonl` and keeps 24 hours. History builds up from when you first start the daemon.
+
+The graph is a separate program, `sketchybar-zmk-battery-graph`, which runs only while the window is open. That keeps the daemon free of UI frameworks. To render the graph to an image without opening a window:
+
+```sh
+sketchybar-zmk-battery-graph --snapshot graph.png              # default 30m spacing
+sketchybar-zmk-battery-graph --snapshot graph.png --interval 15m
+```
 
 ## Options
 
@@ -146,7 +160,8 @@ swift build -c release --build-system native
 
 ```sh
 pkill -x sketchybar-zmk-battery
-rm ~/.local/bin/sketchybar-zmk-battery
+rm ~/.local/bin/sketchybar-zmk-battery ~/.local/bin/sketchybar-zmk-battery-graph
+rm -r ~/Library/Application\ Support/sketchybar-zmk-battery
 ```
 
 Then remove the `kb_batt` lines from your `sketchybarrc`.
@@ -157,5 +172,6 @@ Then remove the `kb_batt` lines from your `sketchybarrc`.
 swift test
 ```
 
-- `Sources/ZMKBatteryCore`: classification, label formatting and flag parsing. This is the pure logic, and it is unit-tested.
+- `Sources/ZMKBatteryCore`: classification, label formatting, flag parsing and history. This is the pure logic, and it is unit-tested.
 - `Sources/sketchybar-zmk-battery`: the daemon (CoreBluetooth and SketchyBar).
+- `Sources/sketchybar-zmk-battery-graph`: the history window (AppKit, SwiftUI and Swift Charts).

@@ -47,10 +47,13 @@ private final class Session {
 final class BatteryMonitor: NSObject {
     private static let retryInterval: Duration = .seconds(30)
     private static let oneShotTimeout: Duration = .seconds(5)
+    /// The graph shows 12 hours; keep a margin.
+    private static let historyRetention: TimeInterval = 24 * 3600
 
     private let config: Config
     private let formatter: LabelFormatter
     private let bar: SketchyBar?
+    private let history = HistoryStore()
     private var manager: CBCentralManager!
 
     private var sessions: [UUID: Session] = [:]
@@ -68,7 +71,13 @@ final class BatteryMonitor: NSObject {
         self.bar = bar
         super.init()
         manager = CBCentralManager(delegate: self, queue: .main)
-        if config.mode != .daemon {
+        if config.mode == .daemon {
+            do {
+                try history.prune(olderThan: Date().addingTimeInterval(-Self.historyRetention))
+            } catch {
+                verbose("failed to prune history: \(error)")
+            }
+        } else {
             Task {
                 try? await Task.sleep(for: Self.oneShotTimeout)
                 self.verbose("timed out waiting for Bluetooth")
@@ -141,11 +150,18 @@ final class BatteryMonitor: NSObject {
         guard matches else { return }
         selected = session.peripheral.identifier
         verbose("using \(session.name)")
+        // Levels read before the keyboard was identified weren't recorded yet.
+        for (role, level) in session.levels {
+            record(.level(level, role: role, device: session.peripheral.identifier.uuidString, name: session.name, at: Date()))
+        }
     }
 
     /// Called after every completed request. Once all sessions are idle, drops devices that
     /// aren't the keyboard and renders (or prints, in one-shot modes).
     private func checkSettled() {
+        // The keyboard's label only depends on its own session; another device that is slow
+        // (or stuck) answering discovery mustn't hold back updates.
+        render()
         guard sessions.values.allSatisfy({ $0.outstanding == 0 }) else { return }
 
         if config.mode != .daemon {
@@ -211,6 +227,15 @@ final class BatteryMonitor: NSObject {
         exit(0)
     }
 
+    private func record(_ entry: HistoryEntry) {
+        guard config.mode == .daemon else { return }
+        do {
+            try history.append(entry)
+        } catch {
+            verbose("failed to write history: \(error)")
+        }
+    }
+
     private func verbose(_ message: String) {
         if config.verbose { log(message) }
     }
@@ -267,6 +292,7 @@ extension BatteryMonitor: @preconcurrency CBCentralManagerDelegate {
         guard let session = session(for: peripheral) else { return }
         verbose("\(session.name) disconnected")
         guard peripheral.identifier == selected else { return }
+        record(.disconnected(device: peripheral.identifier.uuidString, at: Date()))
         session.reset()
         render()
         // Pending connects never time out: this completes when the keyboard is back.
@@ -354,6 +380,9 @@ extension BatteryMonitor: @preconcurrency CBPeripheralDelegate {
         if let role = session.roles[id], let level = characteristic.value?.first {
             verbose("\(session.name): \(role) = \(level)%")
             session.levels[role] = Int(level)
+            if peripheral.identifier == selected {
+                record(.level(Int(level), role: role, device: peripheral.identifier.uuidString, name: session.name, at: Date()))
+            }
         }
         if wasRead {
             checkSettled()
