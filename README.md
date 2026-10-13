@@ -87,6 +87,8 @@ macOS may ask once more for Bluetooth access, this time for SketchyBar, because 
 
 ## Battery history graph
 
+<img src="docs/graph.png" width="420" alt="Battery history graph: central and peripheral levels over the last 3 hours, with a gap where the keyboard was off">
+
 Click the item to open a graph of recent battery levels: central on top, each peripheral below. The Y axis runs 0–100% in steps of 25. The X axis shows 7 ticks ending at now, spaced 30 minutes apart by default. Press ← / → to switch between 15m, 30m and 2h spacing (1.5, 3 or 12 hours of history). Gaps show when the keyboard was disconnected. Click the item again, click anywhere else, or press Esc to close it. The window copies your bar's `color`, `blur_radius`, `corner_radius`, border and `shadow`, read from `sketchybar --query bar` when it opens.
 
 The `click_script` above opens it. The daemon records each level change to `~/Library/Application Support/sketchybar-zmk-battery/history.jsonl` and keeps 24 hours. History builds up from when you first start the daemon.
