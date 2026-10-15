@@ -15,6 +15,8 @@ private final class Session {
     let peripheral: CBPeripheral
     var roles: [ObjectIdentifier: Role] = [:]
     var levels: [Role: Int] = [:]
+    /// Last level written to history per role since connecting, so repeats aren't written again.
+    var recorded: [Role: Int] = [:]
     var userDescriptions: [ObjectIdentifier: String] = [:]
     var presentationDescriptions: [ObjectIdentifier: UInt16] = [:]
     var pendingDescriptorReads: [ObjectIdentifier: Int] = [:]
@@ -32,6 +34,7 @@ private final class Session {
     func reset() {
         roles = [:]
         levels = [:]
+        recorded = [:]
         userDescriptions = [:]
         presentationDescriptions = [:]
         pendingDescriptorReads = [:]
@@ -152,7 +155,7 @@ final class BatteryMonitor: NSObject {
         verbose("using \(session.name)")
         // Levels read before the keyboard was identified weren't recorded yet.
         for (role, level) in session.levels {
-            record(.level(level, role: role, device: session.peripheral.identifier.uuidString, name: session.name, at: Date()))
+            recordLevel(level, role: role, in: session)
         }
     }
 
@@ -225,6 +228,13 @@ final class BatteryMonitor: NSObject {
             return
         }
         exit(0)
+    }
+
+    /// The graph treats a repeated level as a continuation, so only changes are written.
+    private func recordLevel(_ level: Int, role: Role, in session: Session) {
+        guard session.recorded[role] != level else { return }
+        session.recorded[role] = level
+        record(.level(level, role: role, device: session.peripheral.identifier.uuidString, name: session.name, at: Date()))
     }
 
     private func record(_ entry: HistoryEntry) {
@@ -381,7 +391,7 @@ extension BatteryMonitor: @preconcurrency CBPeripheralDelegate {
             verbose("\(session.name): \(role) = \(level)%")
             session.levels[role] = Int(level)
             if peripheral.identifier == selected {
-                record(.level(Int(level), role: role, device: peripheral.identifier.uuidString, name: session.name, at: Date()))
+                recordLevel(Int(level), role: role, in: session)
             }
         }
         if wasRead {
