@@ -52,6 +52,8 @@ final class BatteryMonitor: NSObject {
     private static let oneShotTimeout: Duration = .seconds(5)
     /// The graph shows 12 hours; keep a margin.
     private static let historyRetention: TimeInterval = 24 * 3600
+    /// The daemon runs for days, so pruning only at startup would let the file grow unbounded.
+    private static let pruneInterval: Duration = .seconds(3600)
 
     private let config: Config
     private let formatter: LabelFormatter
@@ -75,10 +77,12 @@ final class BatteryMonitor: NSObject {
         super.init()
         manager = CBCentralManager(delegate: self, queue: .main)
         if config.mode == .daemon {
-            do {
-                try history.prune(olderThan: Date().addingTimeInterval(-Self.historyRetention))
-            } catch {
-                verbose("failed to prune history: \(error)")
+            pruneHistory()
+            Task {
+                while true {
+                    try? await Task.sleep(for: Self.pruneInterval)
+                    self.pruneHistory()
+                }
             }
         } else {
             Task {
@@ -235,6 +239,14 @@ final class BatteryMonitor: NSObject {
         guard session.recorded[role] != level else { return }
         session.recorded[role] = level
         record(.level(level, role: role, device: session.peripheral.identifier.uuidString, name: session.name, at: Date()))
+    }
+
+    private func pruneHistory() {
+        do {
+            try history.prune(olderThan: Date().addingTimeInterval(-Self.historyRetention))
+        } catch {
+            verbose("failed to prune history: \(error)")
+        }
     }
 
     private func record(_ entry: HistoryEntry) {
