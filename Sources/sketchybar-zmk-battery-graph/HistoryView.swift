@@ -4,11 +4,17 @@ import ZMKBatteryCore
 
 @MainActor
 final class HistoryModel: ObservableObject {
-    @Published private(set) var entries: [HistoryEntry] = []
     @Published private(set) var interval = GraphInterval.default
     @Published private(set) var window = GraphInterval.default.window(endingAt: Date())
+    // Derived once per reload or interval change rather than on every render, since each is a
+    // pass over the whole history.
+    @Published private(set) var device: (id: String, name: String?)?
+    @Published private(set) var roles: [Role] = []
+    @Published private(set) var peripheralCount = 0
+    @Published private(set) var segmentsByRole: [Role: [HistorySegment]] = [:]
 
     private let store: HistoryStore
+    private var entries: [HistoryEntry] = []
 
     init(store: HistoryStore) {
         self.store = store
@@ -18,24 +24,31 @@ final class HistoryModel: ObservableObject {
     func reload() {
         entries = store.load()
         window = interval.window(endingAt: Date())
+        recompute()
     }
 
     func select(_ newInterval: GraphInterval) {
         guard newInterval != interval else { return }
         interval = newInterval
         window = interval.window(endingAt: Date())
+        recompute()
     }
 
-    var device: (id: String, name: String?)? { HistorySeries.latestDevice(in: entries) }
+    func segments(for role: Role) -> [HistorySegment] { segmentsByRole[role] ?? [] }
 
-    var roles: [Role] {
-        guard let device else { return [] }
-        return HistorySeries.roles(in: entries, device: device.id)
-    }
-
-    func segments(for role: Role) -> [HistorySegment] {
-        guard let device else { return [] }
-        return HistorySeries.segments(entries: entries, device: device.id, role: role, window: window)
+    private func recompute() {
+        device = HistorySeries.latestDevice(in: entries)
+        guard let device else {
+            roles = []
+            peripheralCount = 0
+            segmentsByRole = [:]
+            return
+        }
+        roles = HistorySeries.roles(in: entries, device: device.id)
+        peripheralCount = roles.filter(\.isPeripheral).count
+        segmentsByRole = Dictionary(uniqueKeysWithValues: roles.map { role in
+            (role, HistorySeries.segments(entries: entries, device: device.id, role: role, window: window))
+        })
     }
 }
 
@@ -72,7 +85,7 @@ struct HistoryView: View {
         switch role {
         case .central: "Central"
         case .peripheral(let index):
-            model.roles.filter(\.isPeripheral).count > 1 ? "Peripheral \(index + 1)" : "Peripheral"
+            model.peripheralCount > 1 ? "Peripheral \(index + 1)" : "Peripheral"
         }
     }
 }
