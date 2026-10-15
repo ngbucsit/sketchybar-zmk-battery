@@ -9,6 +9,8 @@ final class HistoryModel: ObservableObject {
     @Published private(set) var window = GraphInterval.default.window(endingAt: Date())
 
     private let store: HistoryStore
+    /// What `entries` was loaded from; reload() skips decoding while the file is unchanged.
+    private var loaded: HistorySignature?
 
     init(store: HistoryStore) {
         self.store = store
@@ -16,7 +18,11 @@ final class HistoryModel: ObservableObject {
     }
 
     func reload() {
-        entries = store.load()
+        let signature = store.signature()
+        if signature == nil || signature != loaded {
+            entries = store.load()
+            loaded = signature
+        }
         window = interval.window(endingAt: Date())
     }
 

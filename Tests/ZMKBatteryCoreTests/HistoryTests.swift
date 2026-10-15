@@ -44,6 +44,21 @@ import Testing
         #expect(store.load().map(\.level) == [80, 70, 60])
     }
 
+    @Test func signatureChangesOnAppend() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .appendingPathComponent("history.jsonl")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let store = HistoryStore(url: url)
+
+        #expect(store.signature() == nil)
+        try store.append(level(90, hoursAgo: 2))
+        let first = try #require(store.signature())
+        #expect(store.signature() == first)
+        try store.append(level(80, hoursAgo: 1))
+        #expect(store.signature() != first)
+    }
+
     @Test func carriesLevelForwardFromBeforeWindow() {
         let segments = HistorySeries.segments(
             entries: [level(90, hoursAgo: 20), level(70, hoursAgo: 6)],

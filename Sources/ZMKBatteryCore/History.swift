@@ -66,6 +66,16 @@ public struct HistoryStore: Sendable {
         }
     }
 
+    /// Changes whenever the file is written; nil if it doesn't exist. Lets readers skip
+    /// decoding a file they've already loaded.
+    public func signature() -> HistorySignature? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let modified = attributes[.modificationDate] as? Date,
+              let size = (attributes[.size] as? NSNumber)?.intValue
+        else { return nil }
+        return HistorySignature(modified: modified, size: size)
+    }
+
     /// Skips lines that fail to decode rather than failing the whole file.
     public func load() -> [HistoryEntry] {
         guard let data = try? Data(contentsOf: url) else { return [] }
@@ -99,6 +109,11 @@ public struct HistoryStore: Sendable {
             .filter { $0.element.t >= threshold || keep.contains($0.offset) }
             .map(\.element)
     }
+}
+
+public struct HistorySignature: Equatable, Sendable {
+    public let modified: Date
+    public let size: Int
 }
 
 public struct HistoryPoint: Equatable, Sendable {
