@@ -10,6 +10,9 @@ Shows the battery levels of a ZMK split keyboard in [SketchyBar](https://github.
 
 It runs as a small background process. It updates the bar only when a level changes, never scans for devices, and uses ~0% CPU and a few MB of memory. It works with any ZMK keyboard that connects over Bluetooth, whatever its MCU or board.
 
+## Motivation
+I use a wireless Lily58 split keyboard as my daily driver. After adding SketchyBar to my setup, I wanted a way to be able to see the battery levels of my split keyboard at a glance. However, I couldn't find any solution that does this with Sketchybar. So, I (together with Claude) built this lightweight battery monitoring SketchyBar plugin written in Swift.
+
 ## Requirements
 
 - macOS 13 or later
@@ -17,7 +20,10 @@ It runs as a small background process. It updates the bar only when a level chan
 - Swift 6 toolchain: `xcode-select --install` (Command Line Tools) or Xcode
 - A ZMK keyboard paired with your Mac over Bluetooth (not a USB connection)
 
-## 1. Enable battery reporting in your ZMK firmware
+
+## Quick Start
+
+### 1. Enable battery reporting in your ZMK firmware
 
 Add these lines to your keyboard's `.conf` file in your `zmk-config` (e.g. `config/lily58.conf`):
 
@@ -31,7 +37,7 @@ Rebuild and flash **both halves**. Then remove the keyboard from **System Settin
 
 > The last two options are what let the plugin tell the halves apart. Without them only the central half's level is available.
 
-## 2. Build and install
+### 2. Build and install
 
 ```sh
 git clone https://github.com/ngbucsit/sketchybar-zmk-battery.git
@@ -41,7 +47,7 @@ mkdir -p ~/.local/bin
 cp .build/release/sketchybar-zmk-battery .build/release/sketchybar-zmk-battery-graph ~/.local/bin/
 ```
 
-## 3. Check that your keyboard is detected
+### 3. Check that your keyboard is detected
 
 With the keyboard on and connected, run:
 
@@ -59,7 +65,7 @@ Lily58 [6D505B1A-…] (selected)
 
 Other Bluetooth devices that report a battery level (mice, headphones) may be listed too. Only the entry marked `(selected)` appears in the bar.
 
-## 4. Add it to SketchyBar
+### 4. Add it to SketchyBar
 
 Add this to `~/.config/sketchybar/sketchybarrc`. If you already have a keyboard battery item, replace it, along with any `script=`/`update_freq=` that polls `pmset`:
 
@@ -98,7 +104,9 @@ sketchybar-zmk-battery-graph --snapshot graph.png              # default 30m spa
 sketchybar-zmk-battery-graph --snapshot graph.png --interval 15m
 ```
 
-## Options
+## Usage
+
+### Options
 
 | Option | Default | Description |
 |---|---|---|
@@ -130,6 +138,7 @@ sketchybar-zmk-battery --device "Corne" &
 | More than two parts | central, then `Peripheral 0`, `Peripheral 1`, … |
 | Non-split keyboard (needs `--device`) | `level%` |
 | Keyboard disconnected or asleep | `--% \| --%`; levels return automatically when it reconnects |
+
 
 ## Troubleshooting
 
