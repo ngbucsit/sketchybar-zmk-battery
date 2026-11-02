@@ -184,3 +184,31 @@ swift test
 - `Sources/ZMKBatteryCore`: classification, label formatting, flag parsing and history. This is the pure logic, and it is unit-tested.
 - `Sources/sketchybar-zmk-battery`: the daemon (CoreBluetooth and SketchyBar).
 - `Sources/sketchybar-zmk-battery-graph`: the history window (AppKit, SwiftUI and Swift Charts).
+
+## Contributing
+
+### Clone the repo
+
+```sh
+git clone https://github.com/ngbucsit/sketchybar-zmk-battery
+cd sketchybar-zmk-battery
+```
+
+### Build and install
+
+```sh
+swift build -c release
+mkdir -p ~/.local/bin
+cp .build/release/sketchybar-zmk-battery .build/release/sketchybar-zmk-battery-graph ~/.local/bin/
+```
+
+### Run the test suite
+
+```sh
+swift test
+```
+ 
+### Submit a pull request
+
+If you'd like to contribute, please fork the repository and open a pull request to the `main` branch.
+
