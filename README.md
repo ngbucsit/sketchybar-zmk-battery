@@ -8,8 +8,6 @@ Shows the battery levels of a ZMK split keyboard in [SketchyBar](https://github.
    └─ central half (always first, unless you choose otherwise)
 ```
 
-Scripts based on `pmset -g accps` can't tell the halves apart, because macOS lists them in no fixed order. This tool reads the levels over Bluetooth LE instead. ZMK's central half labels every peripheral level it forwards as "Peripheral N", so the halves never swap.
-
 It runs as a small background process. It updates the bar only when a level changes, never scans for devices, and uses ~0% CPU and a few MB of memory. It works with any ZMK keyboard that connects over Bluetooth, whatever its MCU or board.
 
 ## Requirements
